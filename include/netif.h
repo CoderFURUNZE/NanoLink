@@ -44,6 +44,8 @@ struct netif
     uint16_t hwaddr_len;              /**< 硬件地址长度 */
     uint16_t mtu;                     /**< 最大传输单元 */
     uint16_t flags;                   /**< 状态标志位 */
+    uint32_t ip_addr;                 /**< 本接口 IPv4 地址（网络字节序） */
+    uint32_t netmask;                 /**< 子网掩码（网络字节序） */
     void *priv;                       /**< 驱动私有数据指针 */
 
     netif_send_fn send;   /**< 驱动实现的发送函数 */
