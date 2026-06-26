@@ -141,49 +141,41 @@ int main(int argc, char *argv[])
 
     printf("NanoLink starting on %s (%s/%s)...\n", ifname, ip_str, mask_str);
 
-    osal_init();//为多平台做准备(暂未实现)
-    mbuf_init();//初始化数据缓冲区内存池
-    timer_init();//初始化定时器内存池
-    netif_init(NULL, "", NULL, NULL);
-    socket_init();//初始化socket内存池
-    event_bus_init();//初始化事件监听表
+    osal_init();//初始化操作系统抽象层
+    mbuf_init();//初始化内存缓冲区池
+    timer_init();//初始化定时器
+    netif_init(NULL, "", NULL, NULL);//初始化网络接口链表
+    socket_init();//初始化套接字
+    event_bus_init();//初始化事件总线
     route_init();//初始化路由表
-    arp_init();//初始化ARP表
-    ip_init();
-    icmp_init();
-    udp_init();
-    tcp_init();
+    arp_init();//初始化ARP协议
+    ip_init();//初始化IP协议
+    icmp_init();//初始化ICMP协议
+    udp_init();//初始化UDP协议
+    tcp_init();//初始化TCP协议
 
-    g_netif = driver_register(ifname, &tap_ops, NULL);
+    g_netif = driver_register(ifname, &tap_ops, NULL);//注册虚拟网卡tap0
     if (g_netif == NULL) {
         fprintf(stderr, "Failed to register interface %s\n", ifname);
         return 1;
     }
 
-    driver_init_all();
-    ip_set_address(g_netif, ip_addr, netmask);
-    route_add(ip_addr & netmask, netmask, 0, g_netif);
+    driver_init_all();//初始化网卡驱动
+    ip_set_address(g_netif, ip_addr, netmask);//设置网卡的IP地址和子网掩码
+    route_add(ip_addr & netmask, netmask, 0, g_netif);//添加直连路由
 
     {
-        uint32_t gw = (ip_addr & netmask) | 0x01000000;
-        route_set_default(gw, g_netif);
+        uint32_t gw = (ip_addr & netmask) | 0x01000000;//默认网关为子网的第一个地址
+        route_set_default(gw, g_netif);//设置默认路由
     }
 
-    g_netif->input = ll_dispatch_input;
+    g_netif->input = ll_dispatch_input;//设置网卡收到数据包的回调函数
 
-    /* 添加内核侧 ARP 条目（避免 TCP 握手时 ARP 延迟） */
-    {
-        /* 10.0.0.2 在内核侧，TAP 设备默认 MAC 通常是随机的，
-         * 用 ioctl SIOCGIFHWADDR 获取或手动指定。
-         * 简化：从 tap0 的邻居表读，或用伪 MAC。
-         * 这里先留空让 ARP 自动解析。
-         */
-    }
 
     printf("Interface %s ready. IP=%s, Mask=%s\n",
-           g_netif->name, ip_str, mask_str);
+           g_netif->name, ip_str, mask_str);//打印网卡信息
     printf("Run: sudo ip link set %s up && sudo ip addr add %s/24 dev %s\n",
-           ifname, ip_str, ifname);
+           ifname, ip_str, ifname);//打印设置网卡的命令
 
     /* TCP echo 测试：监听 9999 端口 */
     struct tcp_pcb *tcp_listen_pcb = tcp_new();
@@ -210,8 +202,8 @@ int main(int argc, char *argv[])
 
     /* 主循环 */
     while (running) {
-        tap_poll(g_netif);
-        main_loop_tick();
+        tap_poll(g_netif);//轮询虚拟网卡，读取数据包并注入协议栈
+        main_loop_tick();//处理定时器、ARP、IP分片、TCP慢速定时器和快速定时器
 
         if (echo_sock != NULL) {
             struct sockaddr_in remote_addr;

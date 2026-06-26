@@ -198,7 +198,3 @@ TCP 交互可以看到完整的 10+ 帧序列：SYN → SYN-ACK → ACK → PSH 
 - 调试工具链（GDB、Wireshark、tcpdump）
 
 ---
-
-## License
-
-MIT
